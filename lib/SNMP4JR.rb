@@ -1,8 +1,12 @@
 #!/usr/bin/env jruby
 
-require 'java'
-#require 'pp'
-#require '/Users/markcotner/javalib/SNMP4J.jar' <- you can either change this or make sure it's in your classpath
+if RUBY_PLATFORM =~ /java/
+   require 'java'
+   require 'log4j-1.2.9.jar'
+   require 'SNMP4J.jar'
+else
+  warn "jdbc-mysql is only for use with JRuby"
+end
 
 module SNMP4JR
   include_package 'org.snmp4j'
