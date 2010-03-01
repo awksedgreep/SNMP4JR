@@ -50,7 +50,7 @@ Wrappers are provided for all API calls for SNMP4J.  Use them as you would use t
 SNMPMulti Utility class usage:
     
     poller = SNMPMulti.new([{:name => 'server1', :host => 'server1.myhost.com', :community => 'public'}, 
-    								{:name => 'server2', :host => 'server2.myhost.com', :community => 'public'}])
+    			{:name => 'server2', :host => 'server2.myhost.com', :community => 'public'}])
     poller.oids = ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.3']
     poller.poll
     poller.results.each do |result|
