@@ -48,18 +48,18 @@ Usage:
 Wrappers are provided for all API calls for SNMP4J.  Use them as you would use the Java libs directly.  Please refer to SNMP4J documentation for further direction.
 
 SNMPMulti Utility class usage:
-
-poller = SNMPMulti.new([{:name => 'server1', :host => 'server1.myhost.com', :community => 'public'}, 
-								{:name => 'server2', :host => 'server2.myhost.com', :community => 'public'}])
-poller.oids = ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.3']
-poller.poll
-poller.results.each do |result|
-  # ['response'] is the response PDU, ['request'] is the request PDU, ['target'] stores target info for this request
-  result['response'].variable_bindings.each do |vb| 
-    puts vb.oid.to_s + " => " + vb.variable.to_s
-  end
-end
-
+    
+    poller = SNMPMulti.new([{:name => 'server1', :host => 'server1.myhost.com', :community => 'public'}, 
+    								{:name => 'server2', :host => 'server2.myhost.com', :community => 'public'}])
+    poller.oids = ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.3']
+    poller.poll
+    poller.results.each do |result|
+      # ['response'] is the response PDU, ['request'] is the request PDU, ['target'] stores target info for this request
+      result['response'].variable_bindings.each do |vb| 
+        puts vb.oid.to_s + " => " + vb.variable.to_s
+      end
+    end
+    
 
 
 
