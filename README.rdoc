@@ -257,9 +257,9 @@ SNMPMulti Utility class usage:
     			{:name => 'server2', :host => 'server2.myhost.com', :community => 'public'}])
     poller.oids = ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.3']
     poller.poll
-	 poller.response.first[:response].variable_bindings.each do |vb|
-	    puts vb.oid.to_s + ' => ' + vb.variable.to_s            
-	 end
+    poller.response.first[:response].variable_bindings.each do |vb|
+       puts vb.oid.to_s + ' => ' + vb.variable.to_s            
+    end
     
 Please see the wiki and examples directory for more examples: http://wiki.github.com/awksedgreep/SNMP4JR/
 
