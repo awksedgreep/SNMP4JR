@@ -1,0 +1,5 @@
+= ToDo List for SNMP4JR
+
+1.  Create an SNMPManager class similar to the one in the snmp gem for polling single devices.
+2.  Create an example folder and populate it.
+3.  Profit

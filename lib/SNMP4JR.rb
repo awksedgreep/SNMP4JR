@@ -5,7 +5,7 @@ if RUBY_PLATFORM =~ /java/
    require 'log4j-1.2.9.jar'
    require 'SNMP4J.jar'
 else
-  warn "jdbc-mysql is only for use with JRuby"
+  warn "SNMP4JR is only for use with JRuby"
 end
 
 module SNMP4JR
@@ -76,13 +76,13 @@ end
 
 
 class SNMPMulti
+   attr_accessor :pdu, :oids, :targets
+   attr_reader :response
+   
    # Takes a list of targets and a pdu and polls each
    # Alternatively you can give it a list of oids and it will create a pdu for you
    # If you want more control(v3 USM targets, tcp instead of udp, etc) you can pass prebuilt snmp_target
    # inside your target hash like so target
-   attr_accessor :pdu, :oids, :targets
-   attr_reader :response
-   
    def initialize(targets = [{:name => 'My Laptop', :host => '127.0.0.1', :community => 'public'}],
                   oids = ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.3'], 
                   pdu = nil)
@@ -93,11 +93,13 @@ class SNMPMulti
       @targets_built = false
    end
    
+   # Handle PDU responses as they arrive, you don't need to call this
    def onResponse(event)
       event.source.cancel(event.request, self)
       @response << {:target => event.user_object, :request => event.request, :response => event.response}
    end
    
+   # Poll the device
    def poll
       build_targets unless @targets_built
       build_pdu if @pdu.nil?
@@ -110,7 +112,7 @@ class SNMPMulti
    end
    
    private
-   
+   # Build SNMP4J compliant targets from the array of hashes passed in
    def build_targets
       @targets.each do |target|
          if target[:snmp_target].nil?
@@ -125,6 +127,7 @@ class SNMPMulti
       @targets_built = true
    end
    
+   # Populate PDU from OIDs passed in
    def build_pdu
       @pdu = SNMP4JR::PDU.new
       @oids.each do |oid|

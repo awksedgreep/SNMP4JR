@@ -6,10 +6,11 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 1.2") if s.respond_to? :required_rubygems_version=
   s.authors = ["Mark Cotner"]
-  s.date = %q{2010-02-17}
+  s.date = %q{2010-03-02}
   s.description = %q{High Performance SNMP Library for JRuby which wraps SNMP4J}
   s.email = %q{mark.cotner@gmail.com}
-  s.files = ["SNMP4JR.gemspec", "Rakefile"]
+  s.extra_rdoc_files = ["CHANGELOG", "README.rdoc", "TODO.rdoc", "lib/SNMP4J.jar", "lib/SNMP4JR.rb", "lib/log4j-1.2.9.jar"]
+  s.files = ["CHANGELOG", "README.rdoc", "Rakefile", "TODO.rdoc", "gem-public_cert.pem", "init.rb", "lib/SNMP4J.jar", "lib/SNMP4JR.rb", "lib/log4j-1.2.9.jar", "Manifest", "SNMP4JR.gemspec"]
   s.homepage = %q{http://github.com/awksedgreep/SNMP4JR}
   s.rdoc_options = ["--line-numbers", "--inline-source", "--title", "SNMP4JR", "--main", "README.rdoc"]
   s.require_paths = ["lib"]
