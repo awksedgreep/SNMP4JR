@@ -5,7 +5,7 @@ require 'SNMP4JR'
 require 'pp'
 
 m = SNMPMulti.new([{:name => 'server1', :host => '127.0.0.1', :community => 'public'},
-                   {:name => 'server2', :host => 'rubydb.ove.local', :community => 'n8p1'}])
+                   {:name => 'server2', :host => 'rubydb.ove.local', :community => 'public'}])
 
 # Please note that by default the PDU that is build by SNMPMulti will be a GETBULK request
 # Per SNMP2c specification this means each oid should be expected to be a GETNEXT request
