@@ -106,7 +106,7 @@ class SNMPMulti
       snmp = SNMP4JR::Snmp.new(SNMP4JR::Transport::DefaultUdpTransportMapping.new)
       snmp.listen
       @targets.each do |target|
-         snmp.send(@pdu, target[:snmp_target], target, self)
+         snmp.send(@pdu, target[:snmp_target], target[:name], self)
       end
       #sleep 1 # alternatively this _could_ bet set to max timeout of targets
    end
