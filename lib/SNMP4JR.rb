@@ -74,67 +74,180 @@ module SNMP4JR
    end
 end
 
+class SNMPTarget
+   attr_accessor :host, :community, :timeout, :version, :max_repetitions, :non_repeaters, :port
+   attr_reader :request_type, :snmp, :result, :pdus_sent
+   
+   def initialize(ivar = {:host => '127.0.0.1', :community => 'public', :timeout => 2000, 
+                     :version => SNMP4JR::MP::Version2c, :transport => 'udp',
+                     :oids => ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.5'], :pdu => nil,
+                     :max_repetitions => 1, :non_repeaters => 2})
+      @host = ivar[:host]
+      @community = ivar[:community]
+      @timeout = ivar[:timeout]
+      @version = SNMP4JR::MP::Version2c if ivar[:version].nil?
+      @version = ivar[:version] unless ivar[:version].nil?
+      @transport = ivar[:transport]
+      @transport = 'udp' if @transport.nil?
+      @pdu = ivar[:pdu]
+      @oids = ivar[:oids]
+      @max_repetitions = ivar[:max_repetitions]
+      @non_repeaters = ivar[:non_repeaters]
+      @port = 161 if ivar[:port].nil?
+      @port = ivar[:port] unless ivar[:port].nil?
+      @result = []
+      @pdus_sent = 0
+      @request_type = SNMP4JR::Constants::GETBULK
+   end
+   
+   def pdu
+      return @pdu unless @pdu.nil?
+      @pdu = SNMP4JR::PDU.new
+      @oids.each do |oid|
+         @pdu.add(SNMP4JR::SMI::VariableBinding.new(SNMP4JR::SMI::OID.new(oid)))
+      end
+      @pdu.max_repetitions = @max_repetitions
+      @pdu.non_repeaters = @non_repeaters
+      @pdu.type = @request_type
+      return @pdu
+   end
+   
+   def pdu=(ivar)
+      @pdu = ivar
+      @oids = nil
+   end
+   
+   def snmp_target
+      @snmp_target unless @snmp_target.nil?
+      @snmp_target = SNMP4JR::CommunityTarget.new
+      @snmp_target.community = SNMP4JR::SMI::OctetString.new(@community)
+      @snmp_target.address = SNMP4JR::SMI::GenericAddress.parse("#{@transport}:#{@host}/#{@port}")
+      @snmp_target.version = @version
+      @snmp_target.timeout = @timeout
+      @snmp_target
+   end
+   
+   def snmp_target=(target)
+      @snmp_target = target
+   end
+   
+   def oids
+      if @oids.class == String
+         @oids = [@oids]
+      end
+      return @oids
+   end
+   
+   def oids=(oids)
+      @oids = oids
+      @pdu = nil
+   end
+   
+   def get(oid_list = nil)
+      @oids = oid_list unless oid_list.nil?
+      @request_type = SNMP4JR::Constants::GET
+      reset_session
+      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp.listen
+      @response = @snmp.send(pdu, snmp_target)
+      @response.response.variable_bindings.first.variable unless @response.nil?
+   end
+   
+   def get_bulk(oid_list = nil)
+      @oids = oid_list unless oid_list.nil?
+      @request_type = SNMP4JR::Constants::GETBULK
+      reset_session
+      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp.listen
+      @response = @snmp.send(pdu, snmp_target)
+      @response.response.variable_bindings unless @response.nil?
+   end
+   
+   def transport
+      if @transport.class == String
+         case @transport
+         when 'udp'
+            return SNMP4JR::Transport::DefaultUdpTransportMapping.new
+         when 'tcp'
+            return SNMP4JR::Transport::DefaultTcpTransportMapping.new
+         else
+            return SNMP4JR::Transport::DefaultUdpTransportMapping.new
+         end
+      else
+         return @transport
+      end
+   end
+   
+   def transport=(ivar)
+      @transport = ivar
+   end
+   
+   def send(callback = nil)
+      callback = self if callback.nil?
+      @result = []
+      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp.listen
+      @snmp.send(pdu, snmp_target, self, callback)
+      @pdus_sent += 1
+   end
+   
+   def onResponse(event)
+      event.source.cancel(event.request, self)
+      @result << {:target => event.user_object, :request => event.request, :response => event.response, :event => event}
+      @pdus_sent -= 1
+   end
+   
+   def poll_complete?(blocking = true)
+      if blocking
+         loop do
+            return true if @pdus_sent == 0
+            sleep 0.1
+         end
+      else
+         if @pdus_sent == 0
+            true
+         else
+            false
+         end
+      end
+   end
+   
+   private
+   def reset_session
+      @pdu = nil unless @oids.nil?
+      @snmp_target = nil
+      @result = []
+      @pdus_sent = 0
+   end
+end
+
 
 class SNMPMulti
-   attr_accessor :pdu, :oids, :targets
-   attr_reader :response
+   attr_accessor :targets
+   attr_reader :result
    
-   # Takes a list of targets and a pdu and polls each
-   # Alternatively you can give it a list of oids and it will create a pdu for you
-   # If you want more control(v3 USM targets, tcp instead of udp, etc) you can pass prebuilt snmp_target
-   # inside your target hash like so target
-   def initialize(targets = [{:name => 'My Laptop', :host => '127.0.0.1', :community => 'public'}],
-                  oids = ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.3'], 
-                  pdu = nil)
+   # Takes a list of targets and polls each
+   def initialize(targets = [SNMPTarget.new(:host => '127.0.0.1', :community => 'public', :oids => ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.3']), 
+                              SNMPTarget.new(:host => 'rubydb.ove.local', :community => 'public', :oids => ['1.3.6.1.2.1.1.5'])],
+                               transport = 'udp')
       @targets = targets
-      @oids = oids
-      @pdu = pdu
-      @response = []
-      @targets_built = false
+      @result = []
+      @transport = transport
    end
    
    # Handle PDU responses as they arrive, you don't need to call this
    def onResponse(event)
       event.source.cancel(event.request, self)
-      @response << {:target => event.user_object, :request => event.request, :response => event.response}
+      @result << {:target => event.user_object, :request => event.request, :response => event.response, :event => event}
    end
    
    # Poll the device
    def poll
-      build_targets unless @targets_built
-      build_pdu if @pdu.nil?
-      snmp = SNMP4JR::Snmp.new(SNMP4JR::Transport::DefaultUdpTransportMapping.new)
+      snmp = SNMP4JR::Snmp.new(SNMP4JR::Transport::DefaultUdpTransportMapping.new) if @transport == 'udp'
+      snmp = SNMP4JR::Snmp.new(SNMP4JR::Transport::DefaultTcpTransportMapping.new) if @transport == 'tcp'
       snmp.listen
       @targets.each do |target|
-         snmp.send(@pdu, target[:snmp_target], target[:name], self)
+         snmp.send(target.pdu, target.snmp_target, target, self)
       end
-      #sleep 1 # alternatively this _could_ bet set to max timeout of targets
-   end
-   
-   private
-   # Build SNMP4J compliant targets from the array of hashes passed in
-   def build_targets
-      @targets.each do |target|
-         if target[:snmp_target].nil?
-            snmp_target = SNMP4JR::CommunityTarget.new
-            snmp_target.community = SNMP4JR::SMI::OctetString.new(target[:community])
-            snmp_target.address = SNMP4JR::SMI::GenericAddress.parse("udp:#{target[:host]}/161")
-            snmp_target.version = SNMP4JR::MP::Version2c
-            snmp_target.timeout = 5000
-            target[:snmp_target] = snmp_target
-         end
-      end
-      @targets_built = true
-   end
-   
-   # Populate PDU from OIDs passed in
-   def build_pdu
-      @pdu = SNMP4JR::PDU.new
-      @oids.each do |oid|
-         @pdu.add(SNMP4JR::SMI::VariableBinding.new(SNMP4JR::SMI::OID.new(oid)))
-      end
-      @pdu.type = SNMP4JR::Constants::GETBULK
-      @pdu.max_repetitions = 1
-      @pdu.non_repeaters = @oids.length
    end
 end
