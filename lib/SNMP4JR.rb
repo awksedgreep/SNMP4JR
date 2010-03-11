@@ -143,26 +143,6 @@ class SNMPTarget
       @pdu = nil
    end
    
-   def get(oid_list = nil)
-      @oids = oid_list unless oid_list.nil?
-      @request_type = SNMP4JR::Constants::GET
-      reset_session
-      @snmp = SNMP4JR::Snmp.new(transport)
-      @snmp.listen
-      @response = @snmp.send(pdu, snmp_target)
-      @response.response.variable_bindings.first.variable unless @response.nil?
-   end
-   
-   def get_bulk(oid_list = nil)
-      @oids = oid_list unless oid_list.nil?
-      @request_type = SNMP4JR::Constants::GETBULK
-      reset_session
-      @snmp = SNMP4JR::Snmp.new(transport)
-      @snmp.listen
-      @response = @snmp.send(pdu, snmp_target)
-      @response.response.variable_bindings unless @response.nil?
-   end
-   
    def transport
       if @transport.class == String
          case @transport
@@ -182,12 +162,121 @@ class SNMPTarget
       @transport = ivar
    end
    
+   def get(oid_list = nil)
+      self.oids = oid_list unless oid_list.nil?
+      @request_type = SNMP4JR::Constants::GET
+      reset_session
+      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp.listen
+      @response = @snmp.send(pdu, snmp_target)
+      @snmp.close
+      @response.response.variable_bindings.first.variable unless @response.nil?
+   end
+   
+   def get_bulk(oid_list = nil)
+      self.oids = oid_list unless oid_list.nil?
+      @request_type = SNMP4JR::Constants::GETBULK
+      reset_session
+      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp.listen
+      @response = @snmp.send(pdu, snmp_target)
+      @snmp.close
+      @response.response.variable_bindings unless @response.nil?
+   end
+   
+   def walk(oid = nil)
+      self.oids = [oid] unless oid.nil?
+      snmp_oid = SNMP4JR::SMI::OID.new(oid)
+      case version
+      when SNMP4JR::MP::Version1
+         @request_type = SNMP4JR::Constants::GETNEXT
+      when (SNMP4JR::MP::Version2c or SNMP4JR::MP::Version3)
+         @request_type = SNMP4JR::Constants::GETBULK
+         @max_repetitions = 40
+         @non_repeaters = 0
+      end
+      # tick a pdu for async to return when complete
+      @pdus_sent += 1
+      # track when I'm finished polling
+      finished = false
+      @result = []
+      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp.listen
+      until finished
+         response_event = @snmp.send(pdu, snmp_target)
+         pp response_event.response
+         response_pdu = response_event.response
+         response_array = []
+         response_array = pdu_to_ruby_array(response_pdu) unless response_pdu.nil?
+         # timeout
+         if response_pdu.nil?
+            finished = true
+         # nontimeout error
+         elsif response_pdu.error_status != 0
+            finished = true
+         # returned no oids but was not an error (end of tree?)
+         elsif response_array.length == 0
+            finished = true
+         # lexical compare, are we done with the tree?
+         elsif !response_array.last.oid.starts_with(snmp_oid)
+            finished = true
+         end
+         if (response_array.length > 0)
+            # only add results that match filter
+            @result += response_array.select { |vb| vb.oid.starts_with(snmp_oid) }
+            # start next poll with last oid from
+            self.oids = [response_array.last.oid.to_s]
+         end
+      end
+      @pdus_sent -= 1
+      @snmp.close
+      @result
+   end
+   
+   def walk_interfaces
+      walk('1.3.6.1.2.1.2')
+   end
+   
+   def walk_ifX
+      walk('1.3.6.1.2.1.31')
+   end
+   
+   def walk_full_interfaces
+      output = walk_interfaces
+      output += walk_ifX
+      @result = output
+   end
+   
+   def walk_system
+      walk('1.3.6.1.2.1.1')
+   end
+   
+   def walk_volumes
+      walk('1.3.6.1.2.1.25.3.8')
+   end
+   
+   def walk_resources
+      walk('1.3.6.1.2.1.25.2.3.1')
+   end
+   
+   def walk_software
+      walk('1.3.6.1.2.1.25.6.3.1')
+   end
+   
+   def walk_processes
+      walk('1.3.6.1.2.1.25.4.2.1')
+   end
+   
+   def nonblocking_walk(oid = nil)
+   end
+   
    def send(callback = nil)
       callback = self if callback.nil?
       @result = []
       @snmp = SNMP4JR::Snmp.new(transport)
       @snmp.listen
       @snmp.send(pdu, snmp_target, self, callback)
+      @snmp.close
       @pdus_sent += 1
    end
    
@@ -212,12 +301,35 @@ class SNMPTarget
       end
    end
    
+   def result_to_s
+      output = ''
+      @result.each do |res|
+         output += (res.to_s + "\n") if res.class == Java::OrgSnmp4jSmi::VariableBinding
+         if res.class == Array
+            res.each do |hash_event|
+               hash_event.response.variable_bindings.each do |vb|
+                  output += (vb.to_s + "\n")
+               end
+            end
+         end
+      end
+      output
+   end
+   
    private
    def reset_session
       @pdu = nil unless @oids.nil?
       @snmp_target = nil
       @result = []
       @pdus_sent = 0
+   end
+   
+   def pdu_to_ruby_array(ipdu)
+      iresult = []
+      ipdu.variable_bindings.each do |vb|
+         iresult << vb
+      end
+      iresult
    end
 end
 
