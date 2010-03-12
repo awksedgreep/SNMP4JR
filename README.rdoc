@@ -35,24 +35,24 @@ SNMPTarget Utility class usage:
     target.get_bulk ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.3']
     puts target.result_to_s
 
-	 # bulk walk (defaults to version 2c bulk walk, but will do v1 if version is set)
-	 target.walk('1.3.6.1.2.1.1') # System mib
+    # bulk walk (defaults to version 2c bulk walk, but will do v1 if version is set)
+    target.walk('1.3.6.1.2.1.1') # System mib
     puts target.result_to_s
 
-	 # helper functions have been added for common mibs: system, processes, resources, 
-	 # interfaces, ifX, full_interfaces, and volumes
+    # helper functions have been added for common mibs: system, processes, resources, 
+    # interfaces, ifX, full_interfaces, and volumes
     target.walk_system  # System walk helper, same as above
     puts target.result_to_s
 
-	 # you can set too, just make sure you specify the r/w string as the :community
-	 target = SNMPTarget.new(:host => '127.0.0.1', :community => 'private')
-	 # you need to pass in the SMI encoded option here
-	 # Available SMI classes are:
-	 # AbstractVariable, BitString, Counter32, Counter64, Gauge32, GenericAddress, Integer32, 
-	 # IpAddress, Null, OctetString, OID, Opaque, SMIAddress, TcpAddress, TimeTicks, 
-	 # TransportIpAddress, UdpAddress, UnsignedInteger32, VariantVariable
-	 email = SNMP4JR::SMI::OctetString.new('mark.cotner@gmail.com')
-	 target.set('1.3.6.1.2.1.1.4.0', email).to_s
+    # you can set too, just make sure you specify the r/w string as the :community
+    target = SNMPTarget.new(:host => '127.0.0.1', :community => 'private')
+    # you need to pass in the SMI encoded option here
+    # Available SMI classes are:
+    # AbstractVariable, BitString, Counter32, Counter64, Gauge32, GenericAddress, Integer32, 
+    # IpAddress, Null, OctetString, OID, Opaque, SMIAddress, TcpAddress, TimeTicks, 
+    # TransportIpAddress, UdpAddress, UnsignedInteger32, VariantVariable
+    email = SNMP4JR::SMI::OctetString.new('mark.cotner@gmail.com')
+    target.set('1.3.6.1.2.1.1.4.0', email).to_s
 
 
 Please see the wiki and examples directory for more examples: http://wiki.github.com/awksedgreep/SNMP4JR/
