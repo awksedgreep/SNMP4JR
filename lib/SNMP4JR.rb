@@ -166,9 +166,10 @@ class SNMPTarget
       self.oids = oid_list unless oid_list.nil?
       @request_type = SNMP4JR::Constants::GET
       reset_session
-      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp = SNMP4JR::Snmp.new(self.transport)
       @snmp.listen
       @response = @snmp.send(pdu, snmp_target)
+      @result = @response.response.variable_bindings
       @snmp.close
       @response.response.variable_bindings.first.variable unless @response.nil?
    end
@@ -177,9 +178,10 @@ class SNMPTarget
       self.oids = oid_list unless oid_list.nil?
       @request_type = SNMP4JR::Constants::GETBULK
       reset_session
-      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp = SNMP4JR::Snmp.new(self.transport)
       @snmp.listen
       @response = @snmp.send(pdu, snmp_target)
+      @result = @response.response.variable_bindings
       @snmp.close
       @response.response.variable_bindings unless @response.nil?
    end
@@ -189,7 +191,7 @@ class SNMPTarget
       set_pdu.type = SNMP4JR::Constants::SET
       set_pdu.add(SNMP4JR::SMI::VariableBinding.new(SNMP4JR::SMI::OID.new(oid), variable))
       set_pdu.non_repeaters = 0
-      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp = SNMP4JR::Snmp.new(self.transport)
       @snmp.listen
       event = @snmp.set(set_pdu, snmp_target)
       if event.response.nil?
@@ -215,7 +217,7 @@ class SNMPTarget
       # track when I'm finished polling
       finished = false
       @result = []
-      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp = SNMP4JR::Snmp.new(self.transport)
       @snmp.listen
       until finished
          response_event = @snmp.send(pdu, snmp_target)
