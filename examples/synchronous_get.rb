@@ -3,9 +3,9 @@
 require 'rubygems'
 require 'SNMP4JR'
 
-# This example uses the SNMP4J libraries directly from Ruby.  Eventually you'll be able to do this
-# in a simpler way using wrappers provided from SNMP4JR, but currently this is the simplest way to
-# do it.
+# This example uses the SNMP4J libraries directly from Ruby.  This is advanced use of the library.
+# The wrappers are much simpler.  Check out the SNMPTarget and SNMPMulti classes for a much easier
+# example.
 
 # Open a new session
 snmp = SNMP4JR::Snmp.new(SNMP4JR::Transport::DefaultUdpTransportMapping.new)

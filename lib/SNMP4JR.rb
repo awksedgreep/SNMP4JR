@@ -78,23 +78,23 @@ class SNMPTarget
    attr_accessor :host, :community, :timeout, :version, :max_repetitions, :non_repeaters, :port
    attr_reader :request_type, :snmp, :result, :pdus_sent
    
-   def initialize(ivar = {:host => '127.0.0.1', :community => 'public', :timeout => 2000, 
-                     :version => SNMP4JR::MP::Version2c, :transport => 'udp',
-                     :oids => ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.5'], :pdu => nil,
-                     :max_repetitions => 1, :non_repeaters => 2})
-      @host = ivar[:host]
-      @community = ivar[:community]
-      @timeout = ivar[:timeout]
-      @version = SNMP4JR::MP::Version2c if ivar[:version].nil?
-      @version = ivar[:version] unless ivar[:version].nil?
-      @transport = ivar[:transport]
-      @transport = 'udp' if @transport.nil?
-      @pdu = ivar[:pdu]
-      @oids = ivar[:oids]
-      @max_repetitions = ivar[:max_repetitions]
-      @non_repeaters = ivar[:non_repeaters]
-      @port = 161 if ivar[:port].nil?
-      @port = ivar[:port] unless ivar[:port].nil?
+   DEFAULTS = {:host => '127.0.0.1', :community => 'public', :timeout => 2000, 
+               :version => SNMP4JR::MP::Version2c, :transport => 'udp', :port => 161,
+               :oids => ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.5'], :pdu => nil,
+               :max_repetitions => 1, :non_repeaters => 2}
+   
+   def initialize(ivar = {})
+      ivar = DEFAULTS.merge(ivar)
+      self.host = ivar[:host]
+      self.community = ivar[:community]
+      self.timeout = ivar[:timeout]
+      self.version = ivar[:version]
+      self.transport = ivar[:transport]
+      self.pdu = ivar[:pdu]
+      self.oids = ivar[:oids]
+      self.max_repetitions = ivar[:max_repetitions]
+      self.non_repeaters = ivar[:non_repeaters]
+      self.port = ivar[:port]
       @result = []
       @pdus_sent = 0
       @request_type = SNMP4JR::Constants::GETBULK
@@ -118,7 +118,7 @@ class SNMPTarget
    end
    
    def snmp_target
-      @snmp_target unless @snmp_target.nil?
+      return @snmp_target unless @snmp_target.nil?
       @snmp_target = SNMP4JR::CommunityTarget.new
       @snmp_target.community = SNMP4JR::SMI::OctetString.new(@community)
       @snmp_target.address = SNMP4JR::SMI::GenericAddress.parse("#{@transport}:#{@host}/#{@port}")
@@ -204,7 +204,6 @@ class SNMPTarget
       @snmp.listen
       until finished
          response_event = @snmp.send(pdu, snmp_target)
-         pp response_event.response
          response_pdu = response_event.response
          response_array = []
          response_array = pdu_to_ruby_array(response_pdu) unless response_pdu.nil?
