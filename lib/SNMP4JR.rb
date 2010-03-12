@@ -80,7 +80,7 @@ class SNMPTarget
    
    DEFAULTS = {:host => '127.0.0.1', :community => 'public', :timeout => 2000, 
                :version => SNMP4JR::MP::Version2c, :transport => 'udp', :port => 161,
-               :oids => ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.5'], :pdu => nil,
+               :oids => ['1.3.6.1.2.1.1.1', '1.3.6.1.2.1.1.5'],
                :max_repetitions => 1, :non_repeaters => 2}
    
    def initialize(ivar = {})
@@ -90,7 +90,6 @@ class SNMPTarget
       self.timeout = ivar[:timeout]
       self.version = ivar[:version]
       self.transport = ivar[:transport]
-      self.pdu = ivar[:pdu]
       self.oids = ivar[:oids]
       self.max_repetitions = ivar[:max_repetitions]
       self.non_repeaters = ivar[:non_repeaters]
@@ -98,23 +97,6 @@ class SNMPTarget
       @result = []
       @pdus_sent = 0
       @request_type = SNMP4JR::Constants::GETBULK
-   end
-   
-   def pdu
-      return @pdu unless @pdu.nil?
-      @pdu = SNMP4JR::PDU.new
-      @oids.each do |oid|
-         @pdu.add(SNMP4JR::SMI::VariableBinding.new(SNMP4JR::SMI::OID.new(oid)))
-      end
-      @pdu.max_repetitions = @max_repetitions
-      @pdu.non_repeaters = @non_repeaters
-      @pdu.type = @request_type
-      return @pdu
-   end
-   
-   def pdu=(ivar)
-      @pdu = ivar
-      @oids = nil
    end
    
    def snmp_target
@@ -140,7 +122,6 @@ class SNMPTarget
    
    def oids=(oids)
       @oids = oids
-      @pdu = nil
    end
    
    def transport
@@ -162,16 +143,21 @@ class SNMPTarget
       @transport = ivar
    end
    
-   def get(oid_list = nil)
-      self.oids = oid_list unless oid_list.nil?
+   def get(oid = nil)
+      self.oids = [oid] unless oid.nil?
       @request_type = SNMP4JR::Constants::GET
       reset_session
       @snmp = SNMP4JR::Snmp.new(self.transport)
       @snmp.listen
-      @response = @snmp.send(pdu, snmp_target)
-      @result = @response.response.variable_bindings
+      event = @snmp.send(pdu, snmp_target)
+      if event.response.nil?
+         @result = []
+         return nil
+      else
+         @result = event.response.variable_bindings
+      end
       @snmp.close
-      @response.response.variable_bindings.first.variable unless @response.nil?
+      event.response.variable_bindings.first.variable
    end
    
    def get_bulk(oid_list = nil)
@@ -180,10 +166,15 @@ class SNMPTarget
       reset_session
       @snmp = SNMP4JR::Snmp.new(self.transport)
       @snmp.listen
-      @response = @snmp.send(pdu, snmp_target)
-      @result = @response.response.variable_bindings
+      event = @snmp.send(pdu, snmp_target)
+      if event.response.nil?
+         @result = []
+         return nil
+      else
+         @result = event.response.variable_bindings
+      end
       @snmp.close
-      @response.response.variable_bindings unless @response.nil?
+      event.response.variable_bindings
    end
    
    def set(oid = '1.3.6.1.2.1.1.4.0', variable = SNMP4JR::SMI::OctetString.new('mark.cotner@gmail.com'))
@@ -195,7 +186,7 @@ class SNMPTarget
       @snmp.listen
       event = @snmp.set(set_pdu, snmp_target)
       if event.response.nil?
-         puts "SNMP Timeout"
+         @result = []
          return nil
       end
       return event.response.variable_bindings.get 0
@@ -203,6 +194,7 @@ class SNMPTarget
    
    def walk(oid = nil)
       self.oids = [oid] unless oid.nil?
+      return nil if oid.nil?
       snmp_oid = SNMP4JR::SMI::OID.new(oid)
       case version
       when SNMP4JR::MP::Version1
@@ -332,7 +324,18 @@ class SNMPTarget
       output
    end
    
-   private
+   private 
+   def pdu
+      @pdu = SNMP4JR::PDU.new
+      @oids.each do |oid|
+         @pdu.add(SNMP4JR::SMI::VariableBinding.new(SNMP4JR::SMI::OID.new(oid)))
+      end
+      @pdu.max_repetitions = @max_repetitions
+      @pdu.non_repeaters = @non_repeaters
+      @pdu.type = @request_type
+      @pdu
+   end
+   
    def reset_session
       @pdu = nil unless @oids.nil?
       @snmp_target = nil
