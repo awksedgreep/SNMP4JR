@@ -184,6 +184,21 @@ class SNMPTarget
       @response.response.variable_bindings unless @response.nil?
    end
    
+   def set(oid = '1.3.6.1.2.1.1.4.0', variable = SNMP4JR::SMI::OctetString.new('mark.cotner@gmail.com'))
+      set_pdu = SNMP4JR::PDU.new
+      set_pdu.type = SNMP4JR::Constants::SET
+      set_pdu.add(SNMP4JR::SMI::VariableBinding.new(SNMP4JR::SMI::OID.new(oid), variable))
+      set_pdu.non_repeaters = 0
+      @snmp = SNMP4JR::Snmp.new(transport)
+      @snmp.listen
+      event = @snmp.set(set_pdu, snmp_target)
+      if event.response.nil?
+         puts "SNMP Timeout"
+         return nil
+      end
+      return event.response.variable_bindings.get 0
+   end
+   
    def walk(oid = nil)
       self.oids = [oid] unless oid.nil?
       snmp_oid = SNMP4JR::SMI::OID.new(oid)
