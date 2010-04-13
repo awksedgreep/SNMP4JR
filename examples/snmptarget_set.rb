@@ -12,3 +12,4 @@ target.set('1.3.6.1.2.1.1.6.0', location)
 # Set your sysContact
 email = SNMP4JR::SMI::OctetString.new('boogie@basketball.com')
 target.set('1.3.6.1.2.1.1.4.0', email)
+
