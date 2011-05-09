@@ -76,7 +76,7 @@ end
 
 class SNMPTarget
    attr_accessor :host, :community, :timeout, :version, :max_repetitions, :non_repeaters, :port
-   attr_reader :request_type, :snmp, :result, :pdus_sent
+   attr_reader :request_type, :snmp, :result, :pdus_sent, :pdu
    
    DEFAULTS = {:host => '127.0.0.1', :community => 'public', :timeout => 2000, 
                :version => SNMP4JR::MP::Version2c, :transport => 'udp', :port => 161,
@@ -324,7 +324,6 @@ class SNMPTarget
       output
    end
    
-   private 
    def pdu
       @pdu = SNMP4JR::PDU.new
       @oids.each do |oid|
@@ -335,6 +334,8 @@ class SNMPTarget
       @pdu.type = @request_type
       @pdu
    end
+
+   private 
    
    def reset_session
       @pdu = nil unless @oids.nil?

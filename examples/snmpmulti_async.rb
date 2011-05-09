@@ -24,7 +24,7 @@ multi = SNMPMulti.new(target1, target2)
 # Begin the poll
 multi.poll
 sleep 3 # wait for all pdus to return and get processed
-multi.response.each do |result|
+multi.result.each do |result|
    pp result
    if result[:response].nil?
       puts "Request to host timed out"
