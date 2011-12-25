@@ -4,7 +4,7 @@ require 'rubygems'
 require 'SNMP4JR'
 #require '../lib/SNMP4JR'
 
-# Specify your targets.
+# Specify your targets
 target1 = SNMPTarget.new({:name => 'macbookpro', :host => '127.0.0.1', :community => 'public'})
 target2 = SNMPTarget.new({:name => 'macpro', :host => '192.168.0.254', :community => 'public'})
 

@@ -7,7 +7,7 @@ SNMP4JR is both a wrapper for SNMP4J and a library unto itself.  I've noticed th
 === Features:
 * Wrappers written in Ruby with ease of use in mind.
 * Very high performance
-* Thread safe(only refers to SNMP4J calls, not wrappers until I finish testing them)
+* Thread safe
 * Simple interface(SNMPMulti) for polling multiple devices with an OID list _or_ hand crafted PDU
 * Full access to SNMP4J API functionality
 

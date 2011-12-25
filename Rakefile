@@ -2,12 +2,13 @@ require 'rubygems'
 require 'rake'
 require 'echoe'
 
-Echoe.new('SNMP4JR', '0.0.19') do |p|
+Echoe.new('SNMP4JR', '0.0.20') do |p|
   p.description             = "High Performance SNMP Library for JRuby which wraps SNMP4J"
   p.url                     = "http://github.com/awksedgreep/SNMP4JR"
   p.author                  = "Mark Cotner"
   p.email                   = "mark.cotner@gmail.com"
   p.ignore_pattern          = ["tmp/*", "script/*"]
+  p.platform                = "java"
   p.development_dependencies= []
 end
 
