@@ -75,7 +75,7 @@ module SNMP4JR
 end
 
 class SNMPTarget
-  attr_accessor :host, :community, :timeout, :version, :max_repetitions, :non_repeaters, :port
+  attr_accessor :host, :community, :timeout, :version, :max_repetitions, :non_repeaters, :port, :username, :password
   attr_reader :request_type, :snmp, :result, :pdus_sent, :pdu
 
   DEFAULTS = {:host => '127.0.0.1', :community => 'public', :timeout => 2000,
@@ -94,6 +94,8 @@ class SNMPTarget
     self.max_repetitions = ivar[:max_repetitions]
     self.non_repeaters = ivar[:non_repeaters]
     self.port = ivar[:port]
+    self.username = ivar[:username]
+    self.password = ivar[:password]
     @result = []
     @pdus_sent = 0
     @request_type = SNMP4JR::Constants::GETBULK
@@ -101,8 +103,16 @@ class SNMPTarget
 
   def snmp_target
     return @snmp_target unless @snmp_target.nil?
-    @snmp_target = SNMP4JR::CommunityTarget.new
-    @snmp_target.community = SNMP4JR::SMI::OctetString.new(@community)
+
+    if authenticated?
+      @snmp_target = SNMP4JR::UserTarget.new
+      @snmp_target.set_security_level(SNMP4JR::Security::SecurityLevel::AUTH_PRIV)
+      @snmp_target.set_security_name(SNMP4JR::SMI::OctetString.new(@username))
+    else
+      @snmp_target = SNMP4JR::CommunityTarget.new
+      @snmp_target.community = SNMP4JR::SMI::OctetString.new(@community)
+    end
+
     @snmp_target.address = SNMP4JR::SMI::GenericAddress.parse("#{@transport}:#{@host}/#{@port}")
     @snmp_target.version = @version
     @snmp_target.timeout = @timeout
@@ -111,6 +121,30 @@ class SNMPTarget
 
   def snmp_target=(target)
     @snmp_target = target
+  end
+
+  def snmp
+    return @snmp if @snmp
+
+    if authenticated?
+      address = SNMP4JR::SMI::GenericAddress.parse("#{@transport}:#{@host}/#{@port}")
+      usm = SNMP4JR::Security::USM.new(SNMP4JR::Security::SecurityProtocols.instance,
+                                       SNMP4JR::SMI::OctetString.new(SNMP4JR::MP::MPv3.create_local_engine_id),
+                                       0)
+      SNMP4JR::Security::SecurityModels.instance.add_security_model(usm)
+
+      @snmp = SNMP4JR::Snmp.new(self.transport)
+      @snmp.usm.add_user(SNMP4JR::SMI::OctetString.new(@username),
+                         SNMP4JR::Security::UsmUser.new(SNMP4JR::SMI::OctetString.new(@username),
+                                                        SNMP4JR::Security::AuthMD5::ID,
+                                                        SNMP4JR::SMI::OctetString.new(@password),
+                                                        SNMP4JR::Security::AuthMD5::ID,
+                                                        nil))
+    else
+      @snmp = SNMP4JR::Snmp.new(self.transport)
+    end
+
+    @snmp
   end
 
   def oids
@@ -147,16 +181,15 @@ class SNMPTarget
     self.oids = [oid] unless oid.nil?
     @request_type = SNMP4JR::Constants::GET
     reset_session
-    @snmp = SNMP4JR::Snmp.new(self.transport)
-    @snmp.listen
-    event = @snmp.send(pdu, snmp_target)
+    snmp.listen
+    event = snmp.send(pdu, snmp_target)
     if event.response.nil?
       @result = []
       return nil
     else
       @result = event.response.variable_bindings
     end
-    @snmp.close
+    snmp.close
     event.response.variable_bindings.first.variable
   end
 
@@ -164,27 +197,25 @@ class SNMPTarget
     self.oids = oid_list unless oid_list.nil?
     @request_type = SNMP4JR::Constants::GETBULK
     reset_session
-    @snmp = SNMP4JR::Snmp.new(self.transport)
-    @snmp.listen
-    event = @snmp.send(pdu, snmp_target)
+    snmp.listen
+    event = snmp.send(pdu, snmp_target)
     if event.response.nil?
       @result = []
       return nil
     else
       @result = event.response.variable_bindings
     end
-    @snmp.close
+    snmp.close
     event.response.variable_bindings
   end
 
   def set(oid = '1.3.6.1.2.1.1.4.0', variable = SNMP4JR::SMI::OctetString.new('mark.cotner@gmail.com'))
-    set_pdu = SNMP4JR::PDU.new
+    set_pdu = version_3? ? SNMP4JR::ScopedPDU.new : SNMP4JR::PDU.new
     set_pdu.type = SNMP4JR::Constants::SET
     set_pdu.add(SNMP4JR::SMI::VariableBinding.new(SNMP4JR::SMI::OID.new(oid), variable))
     set_pdu.non_repeaters = 0
-    @snmp = SNMP4JR::Snmp.new(self.transport)
-    @snmp.listen
-    event = @snmp.set(set_pdu, snmp_target)
+    snmp.listen
+    event = snmp.set(set_pdu, snmp_target)
     if event.response.nil?
       @result = []
       return nil
@@ -209,10 +240,9 @@ class SNMPTarget
     # track when I'm finished polling
     finished = false
     @result = []
-    @snmp = SNMP4JR::Snmp.new(self.transport)
-    @snmp.listen
+    snmp.listen
     until finished
-      response_event = @snmp.send(pdu, snmp_target)
+      response_event = snmp.send(pdu, snmp_target)
       response_pdu = response_event.response
       response_array = []
       response_array = pdu_to_ruby_array(response_pdu) unless response_pdu.nil?
@@ -237,7 +267,7 @@ class SNMPTarget
       end
     end
     @pdus_sent -= 1
-    @snmp.close
+    snmp.close
     @result
   end
 
@@ -281,10 +311,9 @@ class SNMPTarget
   def send(callback = nil)
     callback = self if callback.nil?
     @result = []
-    @snmp = SNMP4JR::Snmp.new(transport)
-    @snmp.listen
-    @snmp.send(pdu, snmp_target, self, callback)
-    @snmp.close
+    snmp.listen
+    snmp.send(pdu, snmp_target, self, callback)
+    snmp.close
     @pdus_sent += 1
   end
 
@@ -325,7 +354,7 @@ class SNMPTarget
   end
 
   def pdu
-    @pdu = SNMP4JR::PDU.new
+    @pdu = version_3? ? SNMP4JR::ScopedPDU.new : SNMP4JR::PDU.new
     @oids.each do |oid|
       @pdu.add(SNMP4JR::SMI::VariableBinding.new(SNMP4JR::SMI::OID.new(oid)))
     end
@@ -333,6 +362,18 @@ class SNMPTarget
     @pdu.non_repeaters = @non_repeaters
     @pdu.type = @request_type
     @pdu
+  end
+
+  def version_3?
+    @version == SNMP4JR::MP::Version3
+  end
+
+  def credentials_received?
+    @username && @password
+  end
+
+  def authenticated?
+    version_3? && credentials_received?
   end
 
   private
