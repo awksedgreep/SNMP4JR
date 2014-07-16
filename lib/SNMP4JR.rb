@@ -309,6 +309,22 @@ class SNMPTarget
       end
    end
    
+   def result_to_h
+      output = Array.new
+      @result.each do |res|
+         output <<  {res.oid =>  res.to_value_string} if res.class == Java::OrgSnmp4jSmi::VariableBinding
+         if res.class == Array
+            res.each do |hash_event|
+               hash_event.response.variable_bindings.each do |vb|
+                  output << {vb.oid => vb.to_value_string}
+               end
+            end
+         end
+      end
+      output
+   end
+   
+   
    def result_to_s
       output = ''
       @result.each do |res|
