@@ -201,8 +201,6 @@ class SNMPTarget
          @request_type = SNMP4JR::Constants::GETNEXT
       when (SNMP4JR::MP::Version2c or SNMP4JR::MP::Version3)
          @request_type = SNMP4JR::Constants::GETBULK
-         @max_repetitions = 40
-         @non_repeaters = 0
       end
       # tick a pdu for async to return when complete
       @pdus_sent += 1
