@@ -204,8 +204,6 @@ class SNMPTarget
          @request_type = SNMP4JR::Constants::GETNEXT
       when (SNMP4JR::MP::Version2c or SNMP4JR::MP::Version3)
          @request_type = SNMP4JR::Constants::GETBULK
-         @max_repetitions = 40
-         @non_repeaters = 0
       end
       # tick a pdu for async to return when complete
       @pdus_sent += 1
@@ -311,6 +309,22 @@ class SNMPTarget
          end
       end
    end
+   
+   def result_to_h
+      output = Hash.new
+      @result.each do |res|
+         output[res.oid] =  res.to_value_string if res.class == Java::OrgSnmp4jSmi::VariableBinding
+         if res.class == Array
+            res.each do |hash_event|
+               hash_event.response.variable_bindings.each do |vb|
+                  output[vb.oid] = vb.to_value_string
+               end
+            end
+         end
+      end
+      output
+   end
+   
    
    def result_to_s
       output = ''
