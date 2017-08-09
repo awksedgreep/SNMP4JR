@@ -152,6 +152,7 @@ class SNMPTarget
       event = @snmp.send(pdu, snmp_target)
       if event.response.nil?
          @result = []
+         @snmp.close
          return nil
       else
          @result = event.response.variable_bindings
@@ -169,6 +170,7 @@ class SNMPTarget
       event = @snmp.send(pdu, snmp_target)
       if event.response.nil?
          @result = []
+         @snmp.close
          return nil
       else
          @result = event.response.variable_bindings
@@ -187,6 +189,7 @@ class SNMPTarget
       event = @snmp.set(set_pdu, snmp_target)
       if event.response.nil?
          @result = []
+         @snmp.close 
          return nil
       end
       return event.response.variable_bindings.get 0
