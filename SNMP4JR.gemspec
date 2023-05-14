@@ -15,9 +15,10 @@ Gem::Specification.new do |s|
   s.homepage = %q{http://github.com/awksedgreep/SNMP4JR}
   s.rdoc_options = ["--line-numbers", "--inline-source", "--title", "SNMP4JR", "--main", "README.rdoc"]
   s.require_paths = ["lib"]
-  s.rubyforge_project = %q{snmp4jr}
+  # s.rubyforge_project = %q{snmp4jr}
   s.rubygems_version = %q{1.7.2}
-  s.summary = %q{High Performance SNMP Library for JRuby which wraps SNMP4J}
+  s.summary = %q{High Performance SNMP Library for JRuby which wraps SNMP4J Library}
+  s.licenses = ['BSD-Source-Code', 'Apache-2.0']
 
   if s.respond_to? :specification_version then
     s.specification_version = 3
